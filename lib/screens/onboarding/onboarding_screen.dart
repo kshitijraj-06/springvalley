@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../auth/login_screen.dart';
 
+import '../../core/widgets/animations.dart';
+
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -16,22 +18,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     OnboardingPage(
       title: "Stay Updated",
       description: "Get instant notifications about society notices and important announcements",
-      icon: Icons.notifications_active,
+      icon: Icons.notifications_active_rounded,
     ),
     OnboardingPage(
       title: "Pay Securely",
       description: "Pay your maintenance fees and other charges securely through the app",
-      icon: Icons.payment,
+      icon: Icons.payment_rounded,
     ),
     OnboardingPage(
       title: "Raise Issues",
       description: "Report and track maintenance issues easily with our complaint system",
-      icon: Icons.build_circle,
+      icon: Icons.build_circle_rounded,
     ),
     OnboardingPage(
       title: "Manage Visitors",
       description: "Pre-approve visitors and manage deliveries with digital passes",
-      icon: Icons.people,
+      icon: Icons.people_rounded,
     ),
   ];
 
@@ -58,40 +60,49 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildPage(OnboardingPage page) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              page.icon,
-              size: 60,
-              color: Theme.of(context).colorScheme.primary,
+          FadeSlideTransition(
+            delay: const Duration(milliseconds: 200),
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                page.icon,
+                size: 70,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
           ),
-          const SizedBox(height: 48),
-          Text(
-            page.title,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.secondary,
+          const SizedBox(height: 56),
+          FadeSlideTransition(
+            delay: const Duration(milliseconds: 400),
+            child: Text(
+              page.title,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          Text(
-            page.description,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.grey[600],
-              height: 1.5,
+          FadeSlideTransition(
+            delay: const Duration(milliseconds: 600),
+            child: Text(
+              page.description,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -100,54 +111,68 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildBottomSection() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
               _pages.length,
-              (index) => Container(
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: _currentPage == index ? 24 : 8,
+                width: _currentPage == index ? 32 : 8,
                 height: 8,
                 decoration: BoxDecoration(
                   color: _currentPage == index
                       ? Theme.of(context).colorScheme.primary
-                      : Colors.grey[300],
+                      : Theme.of(context).colorScheme.primary.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                if (_currentPage < _pages.length - 1) {
-                  _pageController.nextPage(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                } else {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  );
-                }
-              },
-              child: Text(_currentPage < _pages.length - 1 ? 'Next' : 'Get Started'),
+          const SizedBox(height: 48),
+          ScaleOnTap(
+            onTap: () {
+              if (_currentPage < _pages.length - 1) {
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                );
+              } else {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: null, // Handled by ScaleOnTap
+                child: Text(_currentPage < _pages.length - 1 ? 'Next' : 'Get Started'),
+              ),
             ),
           ),
-          if (_currentPage > 0)
+          const SizedBox(height: 16),
+          if (_currentPage < _pages.length - 1)
             TextButton(
               onPressed: () => Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
               ),
-              child: const Text('Skip'),
-            ),
+              child: Text(
+                'Skip',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.secondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          else
+            const SizedBox(height: 48), // Placeholder to keep layout stable
         ],
       ),
     );

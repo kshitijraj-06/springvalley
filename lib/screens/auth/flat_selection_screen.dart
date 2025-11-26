@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/animations.dart';
 import '../home/main_navigation.dart';
 
 class FlatSelectionScreen extends StatefulWidget {
@@ -24,45 +25,63 @@ class _FlatSelectionScreenState extends State<FlatSelectionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Almost there!',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.secondary,
+            FadeSlideTransition(
+              delay: const Duration(milliseconds: 100),
+              child: Text(
+                'Almost there!',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Please select your tower and flat number to complete the setup.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey[600],
+            FadeSlideTransition(
+              delay: const Duration(milliseconds: 200),
+              child: Text(
+                'Please select your tower and flat number to complete the setup.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.grey[600],
+                ),
               ),
             ),
             const SizedBox(height: 32),
-            _buildDropdown(
-              label: 'Tower / Block',
-              value: _selectedTower,
-              items: _towers,
-              onChanged: (value) => setState(() => _selectedTower = value),
+            FadeSlideTransition(
+              delay: const Duration(milliseconds: 300),
+              child: _buildDropdown(
+                label: 'Tower / Block',
+                value: _selectedTower,
+                items: _towers,
+                onChanged: (value) => setState(() => _selectedTower = value),
+              ),
             ),
             const SizedBox(height: 16),
-            _buildDropdown(
-              label: 'Flat Number',
-              value: _selectedFlat,
-              items: _flats,
-              onChanged: (value) => setState(() => _selectedFlat = value),
+            FadeSlideTransition(
+              delay: const Duration(milliseconds: 400),
+              child: _buildDropdown(
+                label: 'Flat Number',
+                value: _selectedFlat,
+                items: _flats,
+                onChanged: (value) => setState(() => _selectedFlat = value),
+              ),
             ),
             const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _selectedTower != null && _selectedFlat != null
-                    ? () => Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const MainNavigation()),
-                        )
-                    : null,
-                child: const Text('Continue'),
+            FadeSlideTransition(
+              delay: const Duration(milliseconds: 500),
+              child: ScaleOnTap(
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _selectedTower != null && _selectedFlat != null
+                        ? () => Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => const MainNavigation()),
+                            )
+                        : null,
+                    child: const Text('Continue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
               ),
             ),
           ],
@@ -92,13 +111,15 @@ class _FlatSelectionScreenState extends State<FlatSelectionScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
+            color: Colors.grey[50],
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               hint: Text('Select $label'),
               isExpanded: true,
+              icon: const Icon(Icons.keyboard_arrow_down_rounded),
               items: items.map((item) {
                 return DropdownMenuItem(
                   value: item,

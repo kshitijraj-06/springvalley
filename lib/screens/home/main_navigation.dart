@@ -65,7 +65,9 @@ class _MainNavigationState extends State<MainNavigation> {
     
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? Colors.black : Colors.transparent,
@@ -74,21 +76,26 @@ class _MainNavigationState extends State<MainNavigation> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isSelected ? filledIcon : outlinedIcon,
-              color: Colors.white,
-              size: 25,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                isSelected ? filledIcon : outlinedIcon,
+                key: ValueKey(isSelected),
+                color: Colors.white,
+                size: 25,
+              ),
             ),
             const SizedBox(height: 4),
-            Text(
-              label,
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
               style: GoogleFonts.poppins(
                 textStyle: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                ),
               ),
+              child: Text(label),
             ),
           ],
         ),

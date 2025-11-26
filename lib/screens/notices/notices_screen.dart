@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/animations.dart';
 
 class NoticesScreen extends StatefulWidget {
   const NoticesScreen({super.key});
@@ -60,7 +61,11 @@ class _NoticesScreenState extends State<NoticesScreen> {
       ),
       body: Column(
         children: [
-          _buildFilterTabs(),
+          FadeSlideTransition(
+            delay: const Duration(milliseconds: 100),
+            offset: const Offset(0, -0.2),
+            child: _buildFilterTabs(),
+          ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
@@ -71,7 +76,10 @@ class _NoticesScreenState extends State<NoticesScreen> {
                 itemCount: _filteredNotices.length,
                 itemBuilder: (context, index) {
                   final notice = _filteredNotices[index];
-                  return _buildNoticeCard(notice);
+                  return FadeSlideTransition(
+                    delay: Duration(milliseconds: 200 + (index * 100)),
+                    child: _buildNoticeCard(notice),
+                  );
                 },
               ),
             ),
@@ -100,15 +108,17 @@ class _NoticesScreenState extends State<NoticesScreen> {
           
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(filter),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() => _selectedFilter = filter);
-              },
-              backgroundColor: Colors.grey[100],
-              selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-              checkmarkColor: Theme.of(context).colorScheme.primary,
+            child: ScaleOnTap(
+              child: FilterChip(
+                label: Text(filter),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() => _selectedFilter = filter);
+                },
+                backgroundColor: Colors.grey[100],
+                selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                checkmarkColor: Theme.of(context).colorScheme.primary,
+              ),
             ),
           );
         },
@@ -117,89 +127,91 @@ class _NoticesScreenState extends State<NoticesScreen> {
   }
 
   Widget _buildNoticeCard(Notice notice) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => _showNoticeDetail(notice),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      notice.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: notice.isRead ? Colors.grey[700] : Colors.black,
+    return ScaleOnTap(
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: InkWell(
+          onTap: () => _showNoticeDetail(notice),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notice.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: notice.isRead ? Colors.grey[700] : Colors.black,
+                        ),
                       ),
                     ),
+                    if (!notice.isRead)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    if (notice.isImportant) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'IMPORTANT',
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  notice.description,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
                   ),
-                  if (!notice.isRead)
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
                     Container(
-                      width: 8,
-                      height: 8,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
+                        color: _getCategoryColor(notice.category).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        notice.category,
+                        style: TextStyle(
+                          color: _getCategoryColor(notice.category),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  if (notice.isImportant) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'IMPORTANT',
-                        style: TextStyle(color: Colors.white, fontSize: 10),
+                    const Spacer(),
+                    Text(
+                      _formatDate(notice.date),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[500],
                       ),
                     ),
                   ],
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                notice.description,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getCategoryColor(notice.category).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      notice.category,
-                      style: TextStyle(
-                        color: _getCategoryColor(notice.category),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _formatDate(notice.date),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

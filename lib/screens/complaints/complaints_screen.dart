@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/animations.dart';
 
 class ComplaintsScreen extends StatefulWidget {
   const ComplaintsScreen({super.key});
@@ -70,11 +71,13 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
           _buildComplaintsList(_complaints.where((c) => c.status == ComplaintStatus.resolved).toList()),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showRaiseComplaintDialog(),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Raise Complaint', style: TextStyle(color: Colors.white)),
+      floatingActionButton: ScaleOnTap(
+        child: FloatingActionButton.extended(
+          onPressed: () => _showRaiseComplaintDialog(),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text('Raise Complaint', style: TextStyle(color: Colors.white)),
+        ),
       ),
     );
   }
@@ -82,29 +85,31 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
   Widget _buildComplaintsList(List<Complaint> complaints) {
     if (complaints.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.assignment_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No complaints found',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.grey[600],
+        child: FadeSlideTransition(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.assignment_outlined,
+                size: 64,
+                color: Colors.grey[400],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap the + button to raise your first complaint',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[500],
+              const SizedBox(height: 16),
+              Text(
+                'No complaints found',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'Tap the + button to raise your first complaint',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -114,103 +119,108 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
       itemCount: complaints.length,
       itemBuilder: (context, index) {
         final complaint = complaints[index];
-        return _buildComplaintCard(complaint);
+        return FadeSlideTransition(
+          delay: Duration(milliseconds: 100 * index),
+          child: _buildComplaintCard(complaint),
+        );
       },
     );
   }
 
   Widget _buildComplaintCard(Complaint complaint) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => _showComplaintDetail(complaint),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      complaint.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+    return ScaleOnTap(
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: InkWell(
+          onTap: () => _showComplaintDetail(complaint),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        complaint.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(complaint.status).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _getStatusText(complaint.status),
-                      style: TextStyle(
-                        color: _getStatusColor(complaint.status),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                complaint.description,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      complaint.category,
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (complaint.priority == Priority.high)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: _getStatusColor(complaint.status).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'HIGH',
+                      child: Text(
+                        _getStatusText(complaint.status),
                         style: TextStyle(
-                          color: Colors.red,
+                          color: _getStatusColor(complaint.status),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  const Spacer(),
-                  Text(
-                    'ID: ${complaint.id}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[500],
-                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  complaint.description,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
                   ),
-                ],
-              ),
-            ],
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        complaint.category,
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (complaint.priority == Priority.high)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'HIGH',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    const Spacer(),
+                    Text(
+                      'ID: ${complaint.id}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -322,6 +332,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
                 width: 2,
                 height: 30,
                 color: Colors.grey[300],
+                margin: const EdgeInsets.symmetric(vertical: 4),
               ),
           ],
         ),

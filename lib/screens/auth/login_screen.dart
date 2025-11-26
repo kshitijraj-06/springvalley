@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/animations.dart';
 import 'flat_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -24,19 +25,41 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
-              _buildHeader(),
+              FadeSlideTransition(
+                delay: const Duration(milliseconds: 100),
+                offset: const Offset(0, -0.2),
+                child: _buildHeader(),
+              ),
               const SizedBox(height: 48),
-              _buildLoginToggle(),
+              FadeSlideTransition(
+                delay: const Duration(milliseconds: 200),
+                child: _buildLoginToggle(),
+              ),
               const SizedBox(height: 32),
-              _buildLoginForm(),
+              FadeSlideTransition(
+                delay: const Duration(milliseconds: 300),
+                child: _buildLoginForm(),
+              ),
               const SizedBox(height: 24),
-              _buildLoginButton(),
+              FadeSlideTransition(
+                delay: const Duration(milliseconds: 400),
+                child: _buildLoginButton(),
+              ),
               const SizedBox(height: 16),
-              _buildDivider(),
+              FadeSlideTransition(
+                delay: const Duration(milliseconds: 500),
+                child: _buildDivider(),
+              ),
               const SizedBox(height: 16),
-              _buildGoogleButton(),
+              FadeSlideTransition(
+                delay: const Duration(milliseconds: 600),
+                child: _buildGoogleButton(),
+              ),
               const SizedBox(height: 24),
-              _buildHelpText(),
+              FadeSlideTransition(
+                delay: const Duration(milliseconds: 700),
+                child: _buildHelpText(),
+              ),
             ],
           ),
         ),
@@ -54,14 +77,21 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.primary,
             borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: const Icon(
-            Icons.home_work,
+            Icons.home_work_rounded,
             color: Colors.white,
             size: 40,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         Text(
           'Spring Valley',
           style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -74,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
           'Welcome back to your community',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: Colors.grey[600],
+            fontSize: 16,
           ),
         ),
       ],
@@ -84,20 +115,22 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
+      padding: const EdgeInsets.all(4),
       child: Row(
         children: [
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _isPhoneLogin = true),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: _isPhoneLogin ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: _isPhoneLogin
-                      ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)]
+                      ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))]
                       : null,
                 ),
                 child: Text(
@@ -105,6 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: _isPhoneLogin ? FontWeight.w600 : FontWeight.normal,
+                    color: _isPhoneLogin ? Theme.of(context).colorScheme.primary : Colors.grey[600],
                   ),
                 ),
               ),
@@ -113,13 +147,14 @@ class _LoginScreenState extends State<LoginScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _isPhoneLogin = false),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: !_isPhoneLogin ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: !_isPhoneLogin
-                      ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)]
+                      ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))]
                       : null,
                 ),
                 child: Text(
@@ -127,6 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: !_isPhoneLogin ? FontWeight.w600 : FontWeight.normal,
+                    color: !_isPhoneLogin ? Theme.of(context).colorScheme.primary : Colors.grey[600],
                   ),
                 ),
               ),
@@ -147,7 +183,17 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: InputDecoration(
               labelText: 'Phone Number',
               prefixText: '+91 ',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
             ),
           ),
         ] else ...[
@@ -156,7 +202,17 @@ class _LoginScreenState extends State<LoginScreen> {
             keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
               labelText: 'Email',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
             ),
           ),
           const SizedBox(height: 16),
@@ -165,7 +221,17 @@ class _LoginScreenState extends State<LoginScreen> {
             obscureText: true,
             decoration: InputDecoration(
               labelText: 'Password',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
             ),
           ),
         ],
@@ -174,14 +240,20 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () => Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const FlatSelectionScreen()),
+    return ScaleOnTap(
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: () => Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const FlatSelectionScreen()),
+          ),
+          child: Text(
+            _isPhoneLogin ? 'Send OTP' : 'Login',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ),
-        child: Text(_isPhoneLogin ? 'Send OTP' : 'Login'),
       ),
     );
   }
@@ -192,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Expanded(child: Divider(color: Colors.grey[300])),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('or', style: TextStyle(color: Colors.grey[600])),
+          child: Text('or', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
         ),
         Expanded(child: Divider(color: Colors.grey[300])),
       ],
@@ -200,15 +272,20 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildGoogleButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () {},
-        icon: const Icon(Icons.g_mobiledata, size: 24),
-        label: const Text('Continue with Google'),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return ScaleOnTap(
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: OutlinedButton.icon(
+          onPressed: () {},
+          icon: const Icon(Icons.g_mobiledata, size: 28),
+          label: const Text('Continue with Google'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            side: BorderSide(color: Colors.grey[300]!),
+            foregroundColor: Colors.black87,
+          ),
         ),
       ),
     );
@@ -220,7 +297,10 @@ class _LoginScreenState extends State<LoginScreen> {
         onPressed: () {},
         child: Text(
           'Need help?',
-          style: TextStyle(color: Theme.of(context).colorScheme.primary),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
