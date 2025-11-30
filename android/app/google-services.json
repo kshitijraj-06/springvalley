@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "997749721640",
+    "project_id": "spv-main",
+    "storage_bucket": "spv-main.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:997749721640:android:3460037f45b3c44f9e031d",
+        "android_client_info": {
+          "package_name": "com.zerobee.springvalley"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "997749721640-76g9lc76b9qmjgt5cd065cbcpcm8ok7k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyT4drJUf-Pm4YIbwTQWzMh6rC7Bv0vj4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "997749721640-76g9lc76b9qmjgt5cd065cbcpcm8ok7k.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

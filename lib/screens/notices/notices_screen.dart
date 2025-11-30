@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/widgets/animations.dart';
+import '../../core/services/firestore_service.dart';
+import '../../core/widgets/styled_bottom_sheet.dart';
+
+import '../../core/widgets/admin_wrapper.dart';
 
 class NoticesScreen extends StatefulWidget {
   const NoticesScreen({super.key});
@@ -11,41 +16,7 @@ class NoticesScreen extends StatefulWidget {
 class _NoticesScreenState extends State<NoticesScreen> {
   String _selectedFilter = 'All';
   final List<String> _filters = ['All', 'Important', 'Events', 'Maintenance'];
-
-  final List<Notice> _notices = [
-    Notice(
-      title: 'Water Supply Maintenance',
-      description: 'Water supply will be interrupted tomorrow from 10 AM to 2 PM for maintenance work.',
-      category: 'Maintenance',
-      date: DateTime.now().subtract(const Duration(hours: 2)),
-      isRead: false,
-      isImportant: true,
-    ),
-    Notice(
-      title: 'Society Meeting',
-      description: 'Monthly society meeting scheduled for this Saturday at 6 PM in the club house.',
-      category: 'General',
-      date: DateTime.now().subtract(const Duration(days: 1)),
-      isRead: true,
-      isImportant: false,
-    ),
-    Notice(
-      title: 'New Year Celebration',
-      description: 'Join us for the New Year celebration on Dec 31st at 8 PM. Entry fee: ₹500 per family.',
-      category: 'Events',
-      date: DateTime.now().subtract(const Duration(days: 2)),
-      isRead: true,
-      isImportant: false,
-    ),
-    Notice(
-      title: 'Parking Rules Update',
-      description: 'New parking rules effective from next month. Please check the detailed guidelines.',
-      category: 'Important',
-      date: DateTime.now().subtract(const Duration(days: 3)),
-      isRead: false,
-      isImportant: true,
-    ),
-  ];
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
@@ -67,32 +38,73 @@ class _NoticesScreenState extends State<NoticesScreen> {
             child: _buildFilterTabs(),
           ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                await Future.delayed(const Duration(seconds: 1));
-              },
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _filteredNotices.length,
-                itemBuilder: (context, index) {
-                  final notice = _filteredNotices[index];
-                  return FadeSlideTransition(
-                    delay: Duration(milliseconds: 200 + (index * 100)),
-                    child: _buildNoticeCard(notice),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestoreService.getNotices(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+                final notices = docs.map((doc) => Notice.fromFirestore(doc)).toList();
+                final filteredNotices = _filterNotices(notices);
+
+                if (filteredNotices.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No notices found',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
                   );
-                },
-              ),
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    await Future.delayed(const Duration(milliseconds: 500));
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                    itemCount: filteredNotices.length,
+                    itemBuilder: (context, index) {
+                      final notice = filteredNotices[index];
+                      return FadeSlideTransition(
+                        delay: Duration(milliseconds: 200 + (index * 100)),
+                        child: _buildNoticeCard(notice),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],
       ),
+      floatingActionButton: AdminWrapper(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 80),
+          child: ScaleOnTap(
+            child: FloatingActionButton.extended(
+              onPressed: _showAddNoticeDialog,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Add Notice', style: TextStyle(color: Colors.white)),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  List<Notice> get _filteredNotices {
-    if (_selectedFilter == 'All') return _notices;
-    if (_selectedFilter == 'Important') return _notices.where((n) => n.isImportant).toList();
-    return _notices.where((n) => n.category == _selectedFilter).toList();
+  List<Notice> _filterNotices(List<Notice> notices) {
+    if (_selectedFilter == 'All') return notices;
+    if (_selectedFilter == 'Important') return notices.where((n) => n.isImportant).toList();
+    return notices.where((n) => n.category == _selectedFilter).toList();
   }
 
   Widget _buildFilterTabs() {
@@ -172,6 +184,12 @@ class _NoticesScreenState extends State<NoticesScreen> {
                         ),
                       ),
                     ],
+                    AdminWrapper(
+                      child: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                        onPressed: () => _deleteNotice(notice.id),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -241,84 +259,162 @@ class _NoticesScreenState extends State<NoticesScreen> {
   }
 
   void _showNoticeDetail(Notice notice) {
-    showModalBottomSheet(
+    showStyledBottomSheet(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (context, scrollController) => StyledBottomSheet(
+        title: notice.title,
+        scrollController: scrollController,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getCategoryColor(notice.category).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    notice.category,
+                    style: TextStyle(
+                      color: _getCategoryColor(notice.category),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _formatDate(notice.date),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              notice.description,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                height: 1.6,
+              ),
+            ),
+          ],
+        ),
+        bottomAction: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              setState(() => notice.isRead = true);
+              Navigator.pop(context);
+            },
+            child: const Text('Mark as Read'),
+          ),
+        ),
       ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(24),
-          child: Column(
+    );
+  }
+
+  Future<void> _deleteNotice(String id) async {
+    try {
+      await _firestoreService.deleteNotice(id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notice deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting notice: $e')),
+        );
+      }
+    }
+  }
+
+  void _showAddNoticeDialog() {
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    String selectedCategory = 'General';
+    bool isImportant = false;
+
+    showStyledBottomSheet(
+      context: context,
+      builder: (context, scrollController) => StatefulBuilder(
+        builder: (context, setModalState) => StyledBottomSheet(
+          title: 'Add Notice',
+          scrollController: scrollController,
+          content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      notice.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getCategoryColor(notice.category).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      notice.category,
-                      style: TextStyle(
-                        color: _getCategoryColor(notice.category),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _formatDate(notice.date),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text(
-                notice.description,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  height: 1.6,
+              TextField(
+                controller: descriptionController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() => notice.isRead = true);
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Mark as Read'),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
+                items: ['General', 'Events', 'Maintenance'].map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (value) => setModalState(() => selectedCategory = value!),
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text('Mark as Important'),
+                value: isImportant,
+                onChanged: (value) => setModalState(() => isImportant = value),
               ),
             ],
+          ),
+          bottomAction: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                if (titleController.text.isEmpty || descriptionController.text.isEmpty) return;
+                
+                try {
+                  await _firestoreService.addNotice({
+                    'title': titleController.text,
+                    'description': descriptionController.text,
+                    'category': selectedCategory,
+                    'isImportant': isImportant,
+                  });
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Notice added successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error adding notice: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Post Notice'),
+            ),
           ),
         ),
       ),
@@ -327,6 +423,7 @@ class _NoticesScreenState extends State<NoticesScreen> {
 }
 
 class Notice {
+  final String id;
   final String title;
   final String description;
   final String category;
@@ -335,6 +432,7 @@ class Notice {
   final bool isImportant;
 
   Notice({
+    required this.id,
     required this.title,
     required this.description,
     required this.category,
@@ -342,4 +440,17 @@ class Notice {
     required this.isRead,
     required this.isImportant,
   });
+
+  factory Notice.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Notice(
+      id: doc.id,
+      title: data['title'] ?? '',
+      description: data['description'] ?? '',
+      category: data['category'] ?? 'General',
+      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isRead: data['isRead'] ?? false,
+      isImportant: data['isImportant'] ?? false,
+    );
+  }
 }

@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'core/theme/app_theme.dart';
+import 'core/services/auth_service.dart';
+import 'firebase_options.dart';
 import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/home/home_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
   runApp(const SpringValleyApp());
 }
 
@@ -14,7 +24,22 @@ class SpringValleyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Spring Valley',
       theme: AppTheme.lightTheme,
-      home: const OnboardingScreen(),
+      home: StreamBuilder<User?>(
+        stream: AuthService().authStateChanges,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          
+          if (snapshot.hasData) {
+            return const HomeScreen();
+          }
+          
+          return const OnboardingScreen();
+        },
+      ),
       debugShowCheckedModeBanner: false,
     );
   }

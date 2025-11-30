@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../core/widgets/animations.dart';
+import '../../core/widgets/admin_wrapper.dart';
+import '../../core/services/firestore_service.dart';
+import '../../core/widgets/styled_bottom_sheet.dart';
 
 class ComplaintsScreen extends StatefulWidget {
   const ComplaintsScreen({super.key});
@@ -10,36 +15,7 @@ class ComplaintsScreen extends StatefulWidget {
 
 class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProviderStateMixin {
   late TabController _tabController;
-
-  final List<Complaint> _complaints = [
-    Complaint(
-      id: 'C001',
-      title: 'Elevator Issue - Tower A',
-      category: 'Maintenance',
-      description: 'Elevator in Tower A is making strange noises and stops frequently.',
-      status: ComplaintStatus.inProgress,
-      createdDate: DateTime.now().subtract(const Duration(days: 3)),
-      priority: Priority.high,
-    ),
-    Complaint(
-      id: 'C002',
-      title: 'Water Leakage in Parking',
-      category: 'Plumbing',
-      description: 'Water is leaking from the ceiling in the basement parking area.',
-      status: ComplaintStatus.open,
-      createdDate: DateTime.now().subtract(const Duration(days: 1)),
-      priority: Priority.medium,
-    ),
-    Complaint(
-      id: 'C003',
-      title: 'Security Gate Issue',
-      category: 'Security',
-      description: 'Main gate is not closing properly, causing security concerns.',
-      status: ComplaintStatus.resolved,
-      createdDate: DateTime.now().subtract(const Duration(days: 7)),
-      priority: Priority.high,
-    ),
-  ];
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -62,21 +38,40 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildComplaintsList(_complaints),
-          _buildComplaintsList(_complaints.where((c) => c.status == ComplaintStatus.open).toList()),
-          _buildComplaintsList(_complaints.where((c) => c.status == ComplaintStatus.inProgress).toList()),
-          _buildComplaintsList(_complaints.where((c) => c.status == ComplaintStatus.resolved).toList()),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestoreService.getComplaints(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+          final complaints = docs.map((doc) => Complaint.fromFirestore(doc)).toList();
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildComplaintsList(complaints),
+              _buildComplaintsList(complaints.where((c) => c.status == ComplaintStatus.open).toList()),
+              _buildComplaintsList(complaints.where((c) => c.status == ComplaintStatus.inProgress).toList()),
+              _buildComplaintsList(complaints.where((c) => c.status == ComplaintStatus.resolved).toList()),
+            ],
+          );
+        },
       ),
-      floatingActionButton: ScaleOnTap(
-        child: FloatingActionButton.extended(
-          onPressed: () => _showRaiseComplaintDialog(),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text('Raise Complaint', style: TextStyle(color: Colors.white)),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: ScaleOnTap(
+          child: FloatingActionButton.extended(
+            onPressed: () => _showRaiseComplaintDialog(),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text('Raise Complaint', style: TextStyle(color: Colors.white)),
+          ),
         ),
       ),
     );
@@ -115,7 +110,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       itemCount: complaints.length,
       itemBuilder: (context, index) {
         final complaint = complaints[index];
@@ -130,48 +125,63 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
   Widget _buildComplaintCard(Complaint complaint) {
     return ScaleOnTap(
       child: Card(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: InkWell(
           onTap: () => _showComplaintDetail(complaint),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Text(
-                        complaint.title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: _getStatusColor(complaint.status).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        _getStatusText(complaint.status),
+                        _getStatusText(complaint.status).toUpperCase(),
                         style: TextStyle(
                           color: _getStatusColor(complaint.status),
+                          fontWeight: FontWeight.bold,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
+                    Row(
+                      children: [
+                        Text(
+                          _formatDate(complaint.createdAt),
+                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        ),
+                        AdminWrapper(
+                          child: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                            onPressed: () => _deleteComplaint(complaint.id),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  complaint.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   complaint.description,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(color: Colors.grey[600]),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -210,13 +220,6 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
                           ),
                         ),
                       ),
-                    const Spacer(),
-                    Text(
-                      'ID: ${complaint.id}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[500],
-                      ),
-                    ),
                   ],
                 ),
               ],
@@ -225,6 +228,23 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
         ),
       ),
     );
+  }
+
+  Future<void> _deleteComplaint(String id) async {
+    try {
+      await _firestoreService.deleteComplaint(id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Complaint deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting complaint: $e')),
+        );
+      }
+    }
   }
 
   Color _getStatusColor(ComplaintStatus status) {
@@ -243,58 +263,95 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
     }
   }
 
+  String _formatDate(DateTime date) {
+    return DateFormat('MMM d, y').format(date);
+  }
+
   void _showComplaintDetail(Complaint complaint) {
-    showModalBottomSheet(
+    showStyledBottomSheet(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      complaint.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+      builder: (context, scrollController) => StyledBottomSheet(
+        title: complaint.title,
+        scrollController: scrollController,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStatusTimeline(complaint),
+            const SizedBox(height: 24),
+            AdminWrapper(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Admin Actions',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildStatusTimeline(complaint),
-              const SizedBox(height: 24),
-              Text(
-                'Description',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<ComplaintStatus>(
+                      value: complaint.status,
+                      decoration: const InputDecoration(
+                        labelText: 'Update Status',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      items: ComplaintStatus.values.map((status) {
+                        return DropdownMenuItem(
+                          value: status,
+                          child: Text(_getStatusText(status)),
+                        );
+                      }).toList(),
+                      onChanged: (newStatus) async {
+                        if (newStatus != null && newStatus != complaint.status) {
+                          try {
+                            String statusString;
+                            switch (newStatus) {
+                              case ComplaintStatus.open: statusString = 'open'; break;
+                              case ComplaintStatus.inProgress: statusString = 'inProgress'; break;
+                              case ComplaintStatus.resolved: statusString = 'resolved'; break;
+                            }
+                            await _firestoreService.updateComplaintStatus(complaint.id, statusString);
+                            if (mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Status updated successfully')),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error updating status: $e')),
+                              );
+                            }
+                          }
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                complaint.description,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  height: 1.6,
-                ),
+            ),
+            Text(
+              'Description',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              complaint.description,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                height: 1.6,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -332,7 +389,6 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
                 width: 2,
                 height: 30,
                 color: Colors.grey[300],
-                margin: const EdgeInsets.symmetric(vertical: 4),
               ),
           ],
         ),
@@ -349,19 +405,16 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with TickerProvider
   }
 
   void _showRaiseComplaintDialog() {
-    showModalBottomSheet(
+    showStyledBottomSheet(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => const RaiseComplaintForm(),
+      builder: (context, scrollController) => RaiseComplaintForm(scrollController: scrollController),
     );
   }
 }
 
 class RaiseComplaintForm extends StatefulWidget {
-  const RaiseComplaintForm({super.key});
+  final ScrollController scrollController;
+  const RaiseComplaintForm({super.key, required this.scrollController});
 
   @override
   State<RaiseComplaintForm> createState() => _RaiseComplaintFormState();
@@ -371,6 +424,8 @@ class _RaiseComplaintFormState extends State<RaiseComplaintForm> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
+  final FirestoreService _firestoreService = FirestoreService();
+  bool _isLoading = false;
 
   final List<String> _categories = [
     'Plumbing',
@@ -383,94 +438,110 @@ class _RaiseComplaintFormState extends State<RaiseComplaintForm> {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      maxChildSize: 0.9,
-      minChildSize: 0.5,
-      expand: false,
-      builder: (context, scrollController) => SingleChildScrollView(
-        controller: scrollController,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Raise Complaint',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
+    return StyledBottomSheet(
+      title: 'Raise Complaint',
+      scrollController: widget.scrollController,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            value: _selectedCategory,
+            decoration: InputDecoration(
+              labelText: 'Category',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            const SizedBox(height: 24),
-            DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              decoration: InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              items: _categories.map((category) {
-                return DropdownMenuItem(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-              onChanged: (value) => setState(() => _selectedCategory = value),
+            items: _categories.map((category) {
+              return DropdownMenuItem(
+                value: category,
+                child: Text(category),
+              );
+            }).toList(),
+            onChanged: (value) => setState(() => _selectedCategory = value),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _titleController,
+            decoration: InputDecoration(
+              labelText: 'Title',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _descriptionController,
+            maxLines: 4,
+            decoration: InputDecoration(
+              labelText: 'Description',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Attach Images'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.camera_alt),
-              label: const Text('Attach Images'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Complaint submitted successfully!')),
-                  );
-                },
-                child: const Text('Submit Complaint'),
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+      bottomAction: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _submitComplaint,
+          child: _isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text('Submit Complaint'),
         ),
       ),
     );
   }
+
+  Future<void> _submitComplaint() async {
+    if (_selectedCategory == null || _titleController.text.isEmpty || _descriptionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _firestoreService.addComplaint({
+        'title': _titleController.text,
+        'description': _descriptionController.text,
+        'category': _selectedCategory,
+        'status': 'open',
+        'priority': 'medium', // Default
+      });
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Complaint submitted successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 }
+
 
 enum ComplaintStatus { open, inProgress, resolved }
 enum Priority { low, medium, high }
@@ -481,7 +552,7 @@ class Complaint {
   final String category;
   final String description;
   final ComplaintStatus status;
-  final DateTime createdDate;
+  final DateTime createdAt;
   final Priority priority;
 
   Complaint({
@@ -490,7 +561,36 @@ class Complaint {
     required this.category,
     required this.description,
     required this.status,
-    required this.createdDate,
+    required this.createdAt,
     required this.priority,
   });
+
+  factory Complaint.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Complaint(
+      id: doc.id,
+      title: data['title'] ?? '',
+      category: data['category'] ?? '',
+      description: data['description'] ?? '',
+      status: _parseStatus(data['status']),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      priority: _parsePriority(data['priority']),
+    );
+  }
+
+  static ComplaintStatus _parseStatus(String? status) {
+    switch (status) {
+      case 'inProgress': return ComplaintStatus.inProgress;
+      case 'resolved': return ComplaintStatus.resolved;
+      default: return ComplaintStatus.open;
+    }
+  }
+
+  static Priority _parsePriority(String? priority) {
+    switch (priority) {
+      case 'high': return Priority.high;
+      case 'low': return Priority.low;
+      default: return Priority.medium;
+    }
+  }
 }
